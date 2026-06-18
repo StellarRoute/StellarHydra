@@ -1,0 +1,27 @@
+# Default Hydra policy and watchlist configuration (overridden by env vars).
+policy:
+  max_drip_xlm_per_hour: 1000
+  slippage_alert_bps: 100
+  min_orderbook_depth_native: 100
+  prediction_horizon_minutes: 30
+  allowed_assets:
+    - native
+    - USDC
+
+watchlist:
+  pairs:
+    - base: native
+      quote: USDC
+    - base: USDC
+      quote: native
+
+stellarroute:
+  quote_amount: "100"
+  default_slippage_bps: 50
+
+redis:
+  key_prefix: "hydra:"
+  signal_ttl_seconds: 300
+
+drips:
+  dry_run: true

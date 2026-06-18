@@ -1,0 +1,9 @@
+# Planned LangGraph architecture for Gate 1 review (edgeless Command routing).
+flowchart TD
+    START([START]) --> collect_signals[collect_signals]
+    collect_signals --> predict[predict]
+    predict --> decide[decide]
+    decide -->|action required| execute[execute]
+    decide -->|no_op or policy block| finalize[finalize]
+    execute --> finalize
+    finalize --> END([END])

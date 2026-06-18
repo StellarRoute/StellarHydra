@@ -1,0 +1,15 @@
+# Pinned runtime dependencies for non-PEP517 installs and CI.
+httpx>=0.27
+pydantic>=2.6
+pydantic-settings>=2.2
+python-dotenv>=1.0
+langgraph>=0.2
+langchain-core>=0.3
+redis>=5.0
+celery>=5.3
+fastapi>=0.110
+uvicorn[standard]>=0.27
+prometheus-client>=0.20
+structlog>=24.1
+tenacity>=8.2
+pyyaml>=6.0

@@ -1,0 +1,60 @@
+# Drip decision agent — maps predictions to policy-checked action plans.
+from __future__ import annotations
+
+from stellarhydra.config import Settings, get_settings
+from stellarhydra.models.predictions import (
+    BottleneckPrediction,
+    BottleneckSeverity,
+    DripActionPlan,
+    DripActionType,
+)
+
+
+def decide_drip_action(
+    predictions: list[BottleneckPrediction],
+    settings: Settings | None = None,
+) -> DripActionPlan:
+    """Choose a drip action for the highest-confidence prediction."""
+    cfg = settings or get_settings()
+    dry_run = cfg.drips_dry_run
+    max_xlm = cfg.hydra_max_drip_xlm_per_hour
+
+    if not predictions:
+        return DripActionPlan(
+            action=DripActionType.NO_OP,
+            pair="none",
+            rationale="No bottlenecks predicted",
+            dry_run=dry_run,
+        )
+
+    top = predictions[0]
+    if top.severity == BottleneckSeverity.LOW and top.confidence < 0.5:
+        return DripActionPlan(
+            action=DripActionType.NO_OP,
+            pair=top.pair,
+            rationale=f"Low severity ({top.confidence:.2f}) below action threshold",
+            dry_run=dry_run,
+        )
+
+    # Scale drip amount by severity; cap via policy.
+    amount = 50.0
+    if top.severity == BottleneckSeverity.MEDIUM:
+        amount = 150.0
+    elif top.severity == BottleneckSeverity.HIGH:
+        amount = 300.0
+
+    policy_ok = amount <= max_xlm
+    if not policy_ok:
+        amount = max_xlm
+
+    action = DripActionType.ADJUST_RATE if top.confidence >= 0.7 else DripActionType.CREATE_STREAM
+
+    return DripActionPlan(
+        action=action,
+        pair=top.pair,
+        stream_amount_xlm=amount,
+        target_path=top.affected_hops,
+        rationale=f"{top.reason} (confidence={top.confidence:.2f})",
+        dry_run=dry_run,
+        policy_ok=policy_ok,
+    )
