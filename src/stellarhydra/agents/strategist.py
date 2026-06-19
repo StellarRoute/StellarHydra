@@ -48,6 +48,14 @@ def decide_drip_action(
             dry_run=dry_run,
         )
 
+    if top.severity == BottleneckSeverity.LOW and top.confidence >= 0.5:
+        return DripActionPlan(
+            action=DripActionType.PAUSE_STREAM,
+            pair=top.pair,
+            rationale=f"Recovered liquidity; pause prior drip ({top.reason})",
+            dry_run=dry_run,
+        )
+
     # Scale drip amount by severity; cap via policy.
     amount = 50.0
     if top.severity == BottleneckSeverity.MEDIUM:
