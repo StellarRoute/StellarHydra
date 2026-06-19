@@ -22,8 +22,25 @@ def run_hydra_cycle(self, thread_id: str | None = None) -> dict:
 
 @celery_app.task(name="stellarhydra.refresh_pair_watchlist")
 def refresh_pair_watchlist() -> dict:
-    """Placeholder for watchlist refresh from StellarRoute /api/v1/pairs."""
+    """Refresh watchlist from StellarRoute /api/v1/pairs when available."""
     from stellarhydra.config import get_settings
+    from stellarhydra.integrations.stellarroute_client import StellarRouteClient, StellarRouteError
 
-    pairs = get_settings().watchlist_pairs()
-    return {"pairs": [f"{b}:{q}" for b, q in pairs], "status": "ok"}
+    settings = get_settings()
+    fallback = [f"{b}:{q}" for b, q in settings.watchlist_pairs()]
+
+    try:
+        client = StellarRouteClient(settings)
+        pairs_data = client.fetch_pairs()
+        refreshed: list[str] = []
+        for item in pairs_data[:20]:
+            base = str(item.get("base") or item.get("base_asset") or "")
+            quote = str(item.get("quote") or item.get("quote_asset") or "")
+            if base and quote:
+                refreshed.append(f"{base}:{quote}")
+        if refreshed:
+            return {"pairs": refreshed, "status": "refreshed", "source": "stellarroute"}
+    except (StellarRouteError, Exception) as exc:  # noqa: BLE001
+        logger.warning("Watchlist refresh failed, using configured pairs: %s", exc)
+
+    return {"pairs": fallback, "status": "ok", "source": "config"}
