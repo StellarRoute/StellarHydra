@@ -1,4 +1,6 @@
 # Unit tests for drip decision policy and action plans.
+from pathlib import Path
+
 from stellarhydra.agents.strategist import decide_drip_action
 from stellarhydra.config import Settings
 from stellarhydra.models.predictions import BottleneckPrediction, BottleneckSeverity, DripActionType
@@ -31,8 +33,16 @@ def test_decide_caps_at_policy_max():
         horizon_minutes=30,
         reason="test",
     )
-    plan = decide_drip_action([prediction], Settings(hydra_max_drip_xlm_per_hour=100))
+    plan = decide_drip_action(
+        [prediction],
+        Settings.model_construct(
+            hydra_max_drip_xlm_per_hour=100,
+            drips_dry_run=True,
+            config_path=Path("/nonexistent/settings.yaml"),
+        ),
+    )
     assert plan.stream_amount_xlm == 100.0
+    assert plan.policy_ok is False
 
 
 def test_decide_rejects_disallowed_assets(monkeypatch, tmp_path):

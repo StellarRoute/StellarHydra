@@ -17,7 +17,11 @@ def decide_drip_action(
     """Choose a drip action for the highest-confidence prediction."""
     cfg = settings or get_settings()
     dry_run = cfg.drips_dry_run
+    yaml_policy = cfg.yaml_config().get("policy", {})
+    yaml_max = yaml_policy.get("max_drip_xlm_per_hour")
     max_xlm = cfg.hydra_max_drip_xlm_per_hour
+    if yaml_max is not None:
+        max_xlm = min(max_xlm, float(yaml_max))
 
     if not predictions:
         return DripActionPlan(

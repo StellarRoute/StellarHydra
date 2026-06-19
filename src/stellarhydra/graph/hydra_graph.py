@@ -43,6 +43,18 @@ def collect_signals(state: HydraState, settings: Settings | None = None) -> Comm
         for signal in signals:
             if signal.stellarroute_healthy:
                 cache.store(signal)
+
+        # Attach neutral sentiment stub per unique base asset (Phase 2 hook).
+        from stellarhydra.agents.sentiment import fetch_sentiment_stub
+
+        seen_assets: set[str] = set()
+        for signal in signals:
+            asset = signal.base
+            if asset in seen_assets:
+                continue
+            seen_assets.add(asset)
+            sentiment = fetch_sentiment_stub(asset)
+            logger.debug("Sentiment stub for %s: score=%s", asset, sentiment.score)
     except Exception as exc:  # noqa: BLE001 — degrade gracefully in orchestrator
         logger.exception("Signal collection failed")
         return Command(
@@ -142,7 +154,14 @@ def finalize(state: HydraState, settings: Settings | None = None) -> Command[Lit
     cfg = settings or get_settings()
     execution = state.get("execution_result") or {}
     skip = state.get("skip_execution", False)
-    status = "skipped" if skip else execution.get("status", "completed")
+    if skip:
+        status = "skipped"
+    elif execution.get("status") == "error":
+        status = "failed"
+    elif execution.get("status") in ("dry_run", "success", "completed"):
+        status = "success"
+    else:
+        status = execution.get("status", "completed")
 
     cycle_result = CycleResult(
         cycle_id=state.get("cycle_id") or "unknown",
@@ -198,7 +217,7 @@ def run_cycle(thread_id: str | None = None, settings: Settings | None = None) ->
     tid = thread_id or f"{cfg.hydra_checkpoint_thread_prefix}{uuid.uuid4()}"
     config = {"configurable": {"thread_id": tid}}
 
-    final_state = app.invoke({}, config=config)
+    final_state = app.invoke({"cycle_id": tid}, config=config)
     result = final_state.get("cycle_result")
     if isinstance(result, CycleResult):
         return result
