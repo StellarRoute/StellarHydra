@@ -42,3 +42,23 @@ def test_admin_with_valid_key():
             headers={"X-API-Key": settings.hydra_admin_api_key},
         )
     assert response.status_code == 200
+
+
+def test_get_cycle_not_found():
+    settings = get_settings()
+    client = TestClient(app)
+
+    with patch("stellarhydra.api.main.SignalCache.get_cycle", return_value=None):
+        response = client.get(
+            "/admin/cycle/missing-id",
+            headers={"X-API-Key": settings.hydra_admin_api_key},
+        )
+    assert response.status_code == 404
+
+
+def test_health_includes_kill_switch_component():
+    client = TestClient(app)
+    with patch("stellarhydra.api.main.is_kill_switch_active", return_value=False):
+        response = client.get("/health")
+    assert response.status_code == 200
+    assert "kill_switch" in response.json()["components"]
