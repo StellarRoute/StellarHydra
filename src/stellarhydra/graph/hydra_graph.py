@@ -91,7 +91,10 @@ def decide(state: HydraState, settings: Settings | None = None) -> Command[
             goto=FINALIZE,
         )
 
-    if hitl_review_required(plan.stream_amount_xlm):
+    yaml_policy = cfg.yaml_config().get("policy", {})
+    hitl_threshold = float(yaml_policy.get("hitl_threshold_xlm", 500))
+
+    if hitl_review_required(plan.stream_amount_xlm, yaml_threshold=hitl_threshold):
         return Command(
             update={
                 "action_plan": plan,
