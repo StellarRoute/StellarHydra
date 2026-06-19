@@ -42,7 +42,19 @@ def test_decide_caps_at_policy_max():
         ),
     )
     assert plan.stream_amount_xlm == 100.0
-    assert plan.policy_ok is False
+    assert plan.policy_ok is True
+
+
+def test_decide_pause_stream_on_low_severity_recovery():
+    prediction = BottleneckPrediction(
+        pair="native:USDC",
+        severity=BottleneckSeverity.LOW,
+        confidence=0.6,
+        horizon_minutes=30,
+        reason="liquidity recovered",
+    )
+    plan = decide_drip_action([prediction])
+    assert plan.action == DripActionType.PAUSE_STREAM
 
 
 def test_decide_rejects_disallowed_assets(monkeypatch, tmp_path):
