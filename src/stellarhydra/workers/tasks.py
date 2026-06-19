@@ -39,6 +39,9 @@ def refresh_pair_watchlist() -> dict:
             if base and quote:
                 refreshed.append(f"{base}:{quote}")
         if refreshed:
+            from stellarhydra.integrations.signal_cache import SignalCache
+
+            SignalCache(settings).store_watchlist(refreshed)
             return {"pairs": refreshed, "status": "refreshed", "source": "stellarroute"}
     except (StellarRouteError, Exception) as exc:  # noqa: BLE001
         logger.warning("Watchlist refresh failed, using configured pairs: %s", exc)
