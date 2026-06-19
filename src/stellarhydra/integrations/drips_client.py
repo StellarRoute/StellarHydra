@@ -48,7 +48,12 @@ class DripsClient:
             "Authorization": f"Bearer {self._settings.drips_api_key}",
             "Content-Type": "application/json",
         }
-        url = f"{self._settings.drips_api_url.rstrip('/')}/v1/streams/adjust"
+        endpoint = {
+            DripActionType.CREATE_STREAM: "/v1/streams/create",
+            DripActionType.ADJUST_RATE: "/v1/streams/adjust",
+            DripActionType.PAUSE_STREAM: "/v1/streams/pause",
+        }.get(plan.action, "/v1/streams/adjust")
+        url = f"{self._settings.drips_api_url.rstrip('/')}{endpoint}"
 
         with httpx.Client(timeout=30.0) as client:
             response = client.post(url, json=payload, headers=headers)
