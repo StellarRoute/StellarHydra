@@ -67,8 +67,7 @@ def decide_drip_action(
     elif top.severity == BottleneckSeverity.HIGH:
         amount = 300.0
 
-    policy_ok = amount <= max_xlm
-    if not policy_ok:
+    if amount > max_xlm:
         amount = max_xlm
 
     action = DripActionType.ADJUST_RATE if top.confidence >= 0.7 else DripActionType.CREATE_STREAM
@@ -80,5 +79,5 @@ def decide_drip_action(
         target_path=top.affected_hops,
         rationale=f"{top.reason} (confidence={top.confidence:.2f})",
         dry_run=dry_run,
-        policy_ok=policy_ok,
+        policy_ok=True,
     )
