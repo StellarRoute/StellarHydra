@@ -44,7 +44,8 @@ class StellarRouteClient:
     def fetch_pairs(self) -> list[dict[str, Any]]:
         with self._client() as client:
             response = client.get("/api/v1/pairs")
-            response.raise_for_status()
+            if response.status_code >= 400:
+                raise StellarRouteError(f"pairs API error: {response.status_code}")
             payload = _unwrap_envelope(response.json())
             pairs = payload.get("pairs") or payload.get("data") or []
             if isinstance(pairs, list):
