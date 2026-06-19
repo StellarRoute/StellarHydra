@@ -16,6 +16,7 @@ from stellarhydra.config import Settings, get_settings
 from stellarhydra.graph.state import HydraState
 from stellarhydra.integrations.signal_cache import SignalCache
 from stellarhydra.integrations.stellarroute_client import StellarRouteClient
+from stellarhydra.graph.hitl import hitl_review_required
 from stellarhydra.models.predictions import CycleResult, DripActionType
 from stellarhydra.security.kill_switch import is_kill_switch_active
 
@@ -63,7 +64,9 @@ def predict(state: HydraState, settings: Settings | None = None) -> Command[Lite
     """Run bottleneck prediction over collected signals."""
     cfg = settings or get_settings()
     signals = state.get("signals") or []
-    predictions = predict_bottlenecks(signals, cfg)
+    cache = SignalCache(cfg)
+    history_by_pair = {s.pair_key(): cache.get_history(s.pair_key()) for s in signals}
+    predictions = predict_bottlenecks(signals, cfg, history_by_pair=history_by_pair)
     return Command(update={"predictions": predictions}, goto=DECIDE)
 
 
@@ -84,6 +87,16 @@ def decide(state: HydraState, settings: Settings | None = None) -> Command[
                 "action_plan": plan,
                 "skip_execution": True,
                 "errors": ["Policy cap would be exceeded; skipping execution"],
+            },
+            goto=FINALIZE,
+        )
+
+    if hitl_review_required(plan.stream_amount_xlm):
+        return Command(
+            update={
+                "action_plan": plan,
+                "skip_execution": True,
+                "errors": [f"HITL review required for {plan.stream_amount_xlm} XLM/hour plan"],
             },
             goto=FINALIZE,
         )

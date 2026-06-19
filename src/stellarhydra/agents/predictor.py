@@ -9,6 +9,7 @@ from stellarhydra.models.signals import RoutingSignal
 def predict_bottlenecks(
     signals: list[RoutingSignal],
     settings: Settings | None = None,
+    history_by_pair: dict[str, list[RoutingSignal]] | None = None,
 ) -> list[BottleneckPrediction]:
     """Rank pairs by predicted liquidity stress using simple thresholds."""
     cfg = settings or get_settings()
@@ -53,6 +54,13 @@ def predict_bottlenecks(
         if signal.route_count <= 1:
             stress_score += 0.1
             reasons.append("single or no alternate routes")
+
+        prior = (history_by_pair or {}).get(signal.pair_key()) or []
+        if prior:
+            prev_impact = prior[0].price_impact_bps or 0
+            if impact > prev_impact + 10:
+                stress_score += 0.15
+                reasons.append(f"slippage rising vs prior snapshot ({prev_impact} -> {impact} bps)")
 
         if stress_score < 0.3:
             continue
