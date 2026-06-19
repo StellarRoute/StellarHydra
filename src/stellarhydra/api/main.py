@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from pydantic import BaseModel
 
 from stellarhydra.api.auth import require_admin_api_key
 from stellarhydra.api.middleware import RequestLoggingMiddleware
@@ -18,7 +19,13 @@ from stellarhydra.observability.logging_config import configure_logging
 from stellarhydra.observability.metrics import CYCLE_DURATION, CYCLE_TOTAL, DRIP_ACTIONS
 from stellarhydra.observability.tracing import setup_tracing
 from stellarhydra.security.audit import log_drip_action
+from stellarhydra.security.kill_switch import is_kill_switch_active
 from stellarhydra.security.secrets import validate_runtime_secrets
+
+
+class CycleTriggerRequest(BaseModel):
+    thread_id: str | None = None
+    async_mode: bool = False
 
 
 @asynccontextmanager
@@ -58,12 +65,19 @@ def health_check() -> dict:
     except Exception:  # noqa: BLE001
         redis_ok = False
 
+    kill_switch_active = False
+    try:
+        kill_switch_active = is_kill_switch_active(StellarRouteClient(settings))
+    except Exception:  # noqa: BLE001
+        kill_switch_active = False
+
     status = "ok" if redis_ok else "degraded"
     return {
         "status": status,
         "components": {
             "stellarroute": "ok" if stellarroute_ok else "unreachable",
             "redis": "ok" if redis_ok else "unreachable",
+            "kill_switch": "active" if kill_switch_active else "off",
         },
     }
 
@@ -73,11 +87,32 @@ def metrics() -> PlainTextResponse:
     return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
+@app.get("/admin/cycle/{cycle_id}")
+def get_cycle_result(cycle_id: str, _api_key: str = Depends(require_admin_api_key)) -> dict:
+    settings = get_settings()
+    raw = SignalCache(settings).get_cycle(cycle_id)
+    if not raw:
+        raise HTTPException(status_code=404, detail=f"Cycle {cycle_id} not found")
+    import json
+
+    return json.loads(raw)
+
+
 @app.post("/admin/cycle/trigger")
-def trigger_cycle(_api_key: str = Depends(require_admin_api_key)) -> dict:
+def trigger_cycle(
+    body: CycleTriggerRequest | None = None,
+    _api_key: str = Depends(require_admin_api_key),
+) -> dict:
+    req = body or CycleTriggerRequest()
+    if req.async_mode:
+        from stellarhydra.workers.tasks import run_hydra_cycle
+
+        task = run_hydra_cycle.delay(thread_id=req.thread_id)
+        return {"status": "queued", "task_id": task.id, "thread_id": req.thread_id}
+
     start = time.perf_counter()
     try:
-        result = run_cycle()
+        result = run_cycle(thread_id=req.thread_id)
     except Exception as exc:  # noqa: BLE001
         CYCLE_TOTAL.labels(status="error").inc()
         raise HTTPException(status_code=500, detail=str(exc)) from exc
