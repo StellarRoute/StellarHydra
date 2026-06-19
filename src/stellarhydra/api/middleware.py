@@ -5,6 +5,8 @@ import time
 import uuid
 
 import structlog
+
+from stellarhydra.observability.metrics import HTTP_REQUESTS
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -18,6 +20,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         start = time.perf_counter()
         response = await call_next(request)
         duration_ms = (time.perf_counter() - start) * 1000
+        HTTP_REQUESTS.labels(
+            method=request.method,
+            path=request.url.path,
+            status=str(response.status_code),
+        ).inc()
         logger.info(
             "http_request",
             request_id=request_id,
