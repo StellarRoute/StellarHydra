@@ -17,6 +17,7 @@ from stellarhydra.graph.state import HydraState
 from stellarhydra.integrations.signal_cache import SignalCache
 from stellarhydra.integrations.stellarroute_client import StellarRouteClient
 from stellarhydra.models.predictions import CycleResult, DripActionType
+from stellarhydra.security.kill_switch import is_kill_switch_active
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +91,18 @@ def decide(state: HydraState, settings: Settings | None = None) -> Command[
     return Command(update={"action_plan": plan, "skip_execution": False}, goto=EXECUTE)
 
 
-def execute(state: HydraState) -> Command[Literal["finalize"]]:
+def execute(state: HydraState, settings: Settings | None = None) -> Command[Literal["finalize"]]:
     """Execute drip plan via Drips client (dry-run by default)."""
+    cfg = settings or get_settings()
+    if is_kill_switch_active(StellarRouteClient(cfg)):
+        return Command(
+            update={
+                "skip_execution": True,
+                "errors": ["StellarRoute kill switch active; skipping drip execution"],
+            },
+            goto=FINALIZE,
+        )
+
     plan = state.get("action_plan")
     if plan is None:
         return Command(
@@ -110,8 +121,9 @@ def execute(state: HydraState) -> Command[Literal["finalize"]]:
     return Command(update={"execution_result": result}, goto=FINALIZE)
 
 
-def finalize(state: HydraState) -> Command[Literal["__end__"]]:
+def finalize(state: HydraState, settings: Settings | None = None) -> Command[Literal["__end__"]]:
     """Assemble cycle result for observability and API responses."""
+    cfg = settings or get_settings()
     execution = state.get("execution_result") or {}
     skip = state.get("skip_execution", False)
     status = "skipped" if skip else execution.get("status", "completed")
@@ -124,6 +136,11 @@ def finalize(state: HydraState) -> Command[Literal["__end__"]]:
         execution_status=str(status),
         errors=state.get("errors") or [],
     )
+    try:
+        cache = SignalCache(cfg)
+        cache.store_cycle(cycle_result.cycle_id, cycle_result.model_dump_json())
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to persist cycle result to Redis: %s", exc)
     return Command(update={"cycle_result": cycle_result}, goto=END)
 
 
@@ -140,12 +157,18 @@ def build_hydra_graph(settings: Settings | None = None):
     def _decide(state: HydraState):
         return decide(state, cfg)
 
+    def _execute(state: HydraState):
+        return execute(state, cfg)
+
+    def _finalize(state: HydraState):
+        return finalize(state, cfg)
+
     builder = StateGraph(HydraState)
     builder.add_node(COLLECT_SIGNALS, _collect, destinations=(PREDICT,))
     builder.add_node(PREDICT, _predict, destinations=(DECIDE,))
     builder.add_node(DECIDE, _decide, destinations=(EXECUTE, FINALIZE))
-    builder.add_node(EXECUTE, execute, destinations=(FINALIZE,))
-    builder.add_node(FINALIZE, finalize, destinations=(END,))
+    builder.add_node(EXECUTE, _execute, destinations=(FINALIZE,))
+    builder.add_node(FINALIZE, _finalize, destinations=(END,))
     builder.add_edge(START, COLLECT_SIGNALS)
 
     checkpointer = MemorySaver()
