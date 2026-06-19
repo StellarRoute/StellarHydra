@@ -47,6 +47,10 @@ class Settings(BaseSettings):
         default="redis://localhost:6379/2", alias="CELERY_RESULT_BACKEND"
     )
 
+    hydra_kill_switch_fail_closed: bool = Field(
+        default=False, alias="HYDRA_KILL_SWITCH_FAIL_CLOSED"
+    )
+
     config_path: Path = Field(default=Path("config/settings.yaml"))
 
     def watchlist_pairs(self) -> list[tuple[str, str]]:
@@ -59,6 +63,20 @@ class Settings(BaseSettings):
             if key not in seen and key[0] and key[1]:
                 seen.add(key)
                 pairs.append(key)
+
+        try:
+            from stellarhydra.integrations.signal_cache import SignalCache
+
+            cached = SignalCache(self).get_watchlist()
+            if cached:
+                for item in cached:
+                    if ":" in item:
+                        base, quote = item.split(":", 1)
+                        _add(base, quote)
+                if pairs:
+                    return pairs
+        except Exception:
+            pass
 
         for item in self.hydra_watchlist.split(","):
             item = item.strip()
