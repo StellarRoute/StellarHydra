@@ -50,16 +50,34 @@ class Settings(BaseSettings):
     config_path: Path = Field(default=Path("config/settings.yaml"))
 
     def watchlist_pairs(self) -> list[tuple[str, str]]:
+        """Merge env HYDRA_WATCHLIST with optional YAML watchlist.pairs."""
+        seen: set[tuple[str, str]] = set()
         pairs: list[tuple[str, str]] = []
+
+        def _add(base: str, quote: str) -> None:
+            key = (base.strip(), quote.strip())
+            if key not in seen and key[0] and key[1]:
+                seen.add(key)
+                pairs.append(key)
+
         for item in self.hydra_watchlist.split(","):
             item = item.strip()
-            if not item:
-                continue
-            if ":" not in item:
+            if not item or ":" not in item:
                 continue
             base, quote = item.split(":", 1)
-            pairs.append((base.strip(), quote.strip()))
+            _add(base, quote)
+
+        yaml_cfg = self.yaml_config()
+        for entry in yaml_cfg.get("watchlist", {}).get("pairs") or []:
+            if isinstance(entry, dict):
+                _add(str(entry.get("base", "")), str(entry.get("quote", "")))
+
         return pairs
+
+    def allowed_assets(self) -> set[str]:
+        yaml_cfg = self.yaml_config()
+        assets = yaml_cfg.get("policy", {}).get("allowed_assets") or []
+        return {str(a).strip() for a in assets if str(a).strip()}
 
     def yaml_config(self) -> dict[str, Any]:
         if not self.config_path.exists():
