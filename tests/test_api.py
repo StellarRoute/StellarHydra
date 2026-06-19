@@ -23,6 +23,14 @@ def test_admin_requires_api_key():
     assert response.status_code == 401
 
 
+def test_metrics_endpoint_exposes_prometheus_counters():
+    client = TestClient(app)
+    client.get("/health")
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    assert b"hydra_http_requests_total" in response.content
+
+
 def test_admin_with_valid_key():
     settings = get_settings()
     client = TestClient(app)
