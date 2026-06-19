@@ -14,3 +14,15 @@ def test_kill_switch_inactive_when_missing():
     client = MagicMock()
     client.fetch_health_deps.return_value = {"database": "ok"}
     assert is_kill_switch_active(client) is False
+
+
+def test_kill_switch_camel_case_payload():
+    client = MagicMock()
+    client.fetch_health_deps.return_value = {"killSwitch": {"enabled": True}}
+    assert is_kill_switch_active(client) is True
+
+
+def test_kill_switch_flat_active_key():
+    client = MagicMock()
+    client.fetch_health_deps.return_value = {"kill_switch_active": True}
+    assert is_kill_switch_active(client) is True
