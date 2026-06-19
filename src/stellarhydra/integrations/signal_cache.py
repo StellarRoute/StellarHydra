@@ -67,3 +67,19 @@ class SignalCache:
 
     def get_cycle(self, cycle_id: str) -> str | None:
         return self._client.get(f"{self._prefix}cycle:{cycle_id}")
+
+    def store_watchlist(self, pairs: list[str], ttl_seconds: int = 3600) -> None:
+        key = f"{self._prefix}watchlist:pairs"
+        self._client.setex(key, ttl_seconds, json.dumps(pairs))
+
+    def get_watchlist(self) -> list[str] | None:
+        raw = self._client.get(f"{self._prefix}watchlist:pairs")
+        if not raw:
+            return None
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                return [str(p) for p in parsed]
+        except json.JSONDecodeError:
+            return None
+        return None
