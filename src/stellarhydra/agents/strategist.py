@@ -28,6 +28,18 @@ def decide_drip_action(
         )
 
     top = predictions[0]
+    allowed = cfg.allowed_assets()
+    if allowed:
+        base, _, quote = top.pair.partition(":")
+        if base not in allowed or quote not in allowed:
+            return DripActionPlan(
+                action=DripActionType.NO_OP,
+                pair=top.pair,
+                rationale=f"Pair assets not in allowlist: {top.pair}",
+                dry_run=dry_run,
+                policy_ok=False,
+            )
+
     if top.severity == BottleneckSeverity.LOW and top.confidence < 0.5:
         return DripActionPlan(
             action=DripActionType.NO_OP,

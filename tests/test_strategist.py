@@ -33,3 +33,22 @@ def test_decide_caps_at_policy_max():
     )
     plan = decide_drip_action([prediction], Settings(hydra_max_drip_xlm_per_hour=100))
     assert plan.stream_amount_xlm == 100.0
+
+
+def test_decide_rejects_disallowed_assets(monkeypatch, tmp_path):
+    cfg_path = tmp_path / "settings.yaml"
+    cfg_path.write_text(
+        "policy:\n  allowed_assets:\n    - native\n",
+        encoding="utf-8",
+    )
+    settings = Settings(config_path=cfg_path, hydra_watchlist="native:USDC")
+    prediction = BottleneckPrediction(
+        pair="native:USDC",
+        severity=BottleneckSeverity.HIGH,
+        confidence=0.9,
+        horizon_minutes=30,
+        reason="test",
+    )
+    plan = decide_drip_action([prediction], settings)
+    assert plan.action == DripActionType.NO_OP
+    assert plan.policy_ok is False
