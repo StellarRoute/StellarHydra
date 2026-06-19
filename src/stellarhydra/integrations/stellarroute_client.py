@@ -34,6 +34,24 @@ class StellarRouteClient:
             return response.json()
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.5, min=0.5, max=4))
+    def fetch_health_deps(self) -> dict[str, Any]:
+        with self._client() as client:
+            response = client.get("/health/deps")
+            response.raise_for_status()
+            return response.json()
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.5, min=0.5, max=4))
+    def fetch_pairs(self) -> list[dict[str, Any]]:
+        with self._client() as client:
+            response = client.get("/api/v1/pairs")
+            response.raise_for_status()
+            payload = _unwrap_envelope(response.json())
+            pairs = payload.get("pairs") or payload.get("data") or []
+            if isinstance(pairs, list):
+                return [p for p in pairs if isinstance(p, dict)]
+            return []
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.5, min=0.5, max=4))
     def fetch_signal(
         self,
         base: str,

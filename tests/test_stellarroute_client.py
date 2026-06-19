@@ -18,6 +18,37 @@ def test_parse_path_dict_steps():
     assert steps[0].selling_asset == "native"
 
 
+def test_fetch_pairs_parses_list(monkeypatch):
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {"data": {"pairs": [{"base": "native", "quote": "USDC"}]}}
+
+        def raise_for_status(self):
+            return None
+
+    class FakeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def get(self, path, *args, **kwargs):
+            if path == "/api/v1/pairs":
+                return FakeResponse()
+            raise AssertionError(path)
+
+    monkeypatch.setattr(
+        "stellarhydra.integrations.stellarroute_client.httpx.Client",
+        lambda **kwargs: FakeClient(),
+    )
+    client = StellarRouteClient()
+    pairs = client.fetch_pairs()
+    assert pairs[0]["base"] == "native"
+
+
 def test_fetch_watchlist_degrades_on_error(monkeypatch):
     class FakeResponse:
         status_code = 404
