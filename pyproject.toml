@@ -38,6 +38,11 @@ dev = [
     "httpx",
     "respx>=0.21",
 ]
+otel = [
+    "opentelemetry-api>=1.24",
+    "opentelemetry-sdk>=1.24",
+    "opentelemetry-exporter-otlp>=1.24",
+]
 
 [project.scripts]
 stellarhydra-cycle = "stellarhydra.cli:main"
