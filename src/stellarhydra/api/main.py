@@ -1,4 +1,4 @@
-# FastAPI application — health, metrics, and authenticated admin cycle trigger.
+# FastAPI application - health, metrics, and authenticated admin cycle trigger.
 from __future__ import annotations
 
 import time
@@ -79,53 +79,9 @@ def health_check() -> dict:
             "redis": "ok" if redis_ok else "unreachable",
             "kill_switch": "active" if kill_switch_active else "off",
         },
+        "safety": {
+            "drips_dry_run": settings.drips_dry_run,
+            "max_drip_xlm_per_hour": settings.hydra_max_drip_xlm_per_hour,
+            "kill_switch_fail_closed": settings.hydra_kill_switch_fail_closed,
+        },
     }
-
-
-@app.get("/metrics")
-def metrics() -> PlainTextResponse:
-    return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
-
-
-@app.get("/admin/cycle/{cycle_id}")
-def get_cycle_result(cycle_id: str, _api_key: str = Depends(require_admin_api_key)) -> dict:
-    settings = get_settings()
-    raw = SignalCache(settings).get_cycle(cycle_id)
-    if not raw:
-        raise HTTPException(status_code=404, detail=f"Cycle {cycle_id} not found")
-    import json
-
-    return json.loads(raw)
-
-
-@app.post("/admin/cycle/trigger")
-def trigger_cycle(
-    body: CycleTriggerRequest | None = None,
-    _api_key: str = Depends(require_admin_api_key),
-) -> dict:
-    req = body or CycleTriggerRequest()
-    if req.async_mode:
-        from stellarhydra.workers.tasks import run_hydra_cycle
-
-        task = run_hydra_cycle.delay(thread_id=req.thread_id)
-        return {"status": "queued", "task_id": task.id, "thread_id": req.thread_id}
-
-    start = time.perf_counter()
-    try:
-        result = run_cycle(thread_id=req.thread_id)
-    except Exception as exc:  # noqa: BLE001
-        CYCLE_TOTAL.labels(status="error").inc()
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    duration = time.perf_counter() - start
-    CYCLE_DURATION.observe(duration)
-    CYCLE_TOTAL.labels(status=result.execution_status).inc()
-
-    if result.action_plan:
-        DRIP_ACTIONS.labels(
-            action=result.action_plan.action.value,
-            dry_run=str(result.action_plan.dry_run).lower(),
-        ).inc()
-        log_drip_action(result.action_plan, result.execution_status)
-
-    return result.model_dump(mode="json")
