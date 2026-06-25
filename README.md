@@ -199,6 +199,8 @@ celery -A stellarhydra.workers.celery_app worker --loglevel=info
 
 ### Contributing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full branch, PR, and Drips Wave contributor workflow. Maintainer label and points guidance lives in [docs/outreach/drips-wave-maintainer-runbook.md](docs/outreach/drips-wave-maintainer-runbook.md).
+
 StellarHydra is built as a reference integration for **Drips Wave** programmable liquidity on Stellar, alongside the StellarRoute routing stack.
 
 1. Read [docs/PRD.md](docs/PRD.md) and [docs/ROADMAP.md](docs/ROADMAP.md) to understand scope and phase gates.
