@@ -19,7 +19,7 @@ Derived from [PRD.md](./PRD.md). Phases are sequential; exit criteria must pass 
 
 | Item | Detail |
 |------|--------|
-| **Objective** | Prove predict -> decide -> drip stub in one LangGraph cycle |
+| **Objective** | Prove predict → decide → drip stub in one LangGraph cycle |
 | **Deliverables** | `hydra_graph.py`, signal models, StellarRoute HTTP client, Drips dry-run client, `scripts/run_cycle.py`, unit tests for graph |
 | **Exit criteria** | Dry-run cycle completes with `DripActionPlan` emitted; tests pass without live API keys |
 | **Complexity** | Medium |
@@ -54,7 +54,7 @@ Phase 2 live Drips execution depends on OQ1. Track endpoint, auth, sandbox, and 
 
 | Phase | Focus | Complexity | Depends on | Target (relative) |
 |-------|-------|------------|------------|-------------------|
-| 0 | Scaffold | Low | - | Week 1 |
+| 0 | Scaffold | Low | — | Week 1 |
 | 1 | Core loop E2E | Medium | Phase 0 | Week 2-3 |
 | 2 | Feature complete | High | Phase 1, OQ1 ([Drips Wave API ADR](decisions/001-drips-wave-api-oq1.md)) | Week 4-7 |
 | 3 | Production hardening | Medium | Phase 2, StellarRoute Phase A | Week 8-10 |
