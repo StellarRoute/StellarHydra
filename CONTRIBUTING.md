@@ -31,9 +31,18 @@ pytest tests -v
 | `src/stellarhydra/api/` | FastAPI admin service |
 | `src/stellarhydra/workers/` | Celery tasks |
 
+## Drips Wave contributor workflow
+
+- Maintainers mark Wave-eligible issues with the `Drip Wave` label and one complexity label: `complexity:low`, `complexity:medium`, or `complexity:high`.
+- Contributors should pick an open, unassigned issue and check for active PRs before starting.
+- During an active Wave cycle, maintainers should assign accepted contributors quickly with GitHub assignees so work is visible and duplicate effort is reduced.
+- PR descriptions should mention the issue, the validation performed, and whether the change affects live Drips behavior or only dry-run planning.
+- Do not replace StellarRoute routing or quote logic. PRD NG1 keeps StellarRoute authoritative; StellarHydra is a predictive overlay that reads through the StellarRoute HTTP API.
+- Keep `DRIPS_DRY_RUN=true` unless a maintainer explicitly asks for sandbox credential testing.
+
 ## Pull requests
 
-- Branch from `main`, open PRs against `main`.
+- Branch from `main`, open PRs against `main`. Use an issue-numbered name such as `feature/31-drips-wave-runbook`.
 - Keep `DRIPS_DRY_RUN=true` unless explicitly testing sandbox Drips credentials.
 - Ensure CI passes: `pytest`, `ruff check`, `mypy`.
 - Use issue title prefixes: `[backend]`, `[integrations]`, `[documentation]`.
