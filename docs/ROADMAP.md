@@ -35,6 +35,8 @@ Derived from [PRD.md](./PRD.md). Phases are sequential; exit criteria must pass 
 | **Exit criteria** | Worker task runs cycle; Redis caches signals with TTL; failed StellarRoute call degrades gracefully; policy blocks over-cap drip |
 | **Complexity** | High |
 
+Phase 2 live Drips execution depends on OQ1. Track endpoint, auth, sandbox, and verification notes in [ADR 001](./decisions/001-drips-wave-api-oq1.md).
+
 ---
 
 ## Phase 3: Production Hardening
@@ -54,7 +56,7 @@ Derived from [PRD.md](./PRD.md). Phases are sequential; exit criteria must pass 
 |-------|-------|------------|------------|-------------------|
 | 0 | Scaffold | Low | — | Week 1 |
 | 1 | Core loop E2E | Medium | Phase 0 | Week 2-3 |
-| 2 | Feature complete | High | Phase 1, OQ1 (Drips API) | Week 4-7 |
+| 2 | Feature complete | High | Phase 1, OQ1 ([Drips Wave API ADR](decisions/001-drips-wave-api-oq1.md)) | Week 4-7 |
 | 3 | Production hardening | Medium | Phase 2, StellarRoute Phase A | Week 8-10 |
 
 ---
@@ -74,7 +76,7 @@ Derived from [PRD.md](./PRD.md). Phases are sequential; exit criteria must pass 
 
 | Risk | Mitigation | Phase |
 |------|------------|-------|
-| Drips API undocumented | Dry-run client + OQ1 tracker | 1-2 |
+| Drips API undocumented | Dry-run client + [OQ1 ADR tracker](decisions/001-drips-wave-api-oq1.md) | 1-2 |
 | StellarRoute API rate limits | Redis cache, backoff, watchlist size cap | 2 |
 | Autonomous fund movement | Default dry-run, policy caps, HITL stub | 1-3 |
 | LangGraph checkpoint storage | MemorySaver dev; PostgresSaver documented for prod | 3 |
