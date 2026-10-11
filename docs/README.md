@@ -13,6 +13,7 @@ Index of guides for the Agentic Liquidity Balancer (ALB).
 
 | Doc | Description |
 |-----|-------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | ALB overlay model, authoritative router boundaries, and NG1-NG5 non-goals |
 | [architecture/overview.md](architecture/overview.md) | System components and data flow |
 | [architecture/langgraph-workflow.md](architecture/langgraph-workflow.md) | Graph nodes and routing |
 | [architecture/agents.md](architecture/agents.md) | Predictor, strategist, executor |
